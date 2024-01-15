@@ -167,15 +167,11 @@ func decodeTextContent(part *multipart.Part, params map[string]string) (io.Reade
 	if contentEncoding != "" {
 		return decodeContent(part, contentEncoding)
 	}
-	ch := charsetFromParams(params)
-	if ch != Utf8 && ch != UsAscii {
-		dec, err := charsetDecoder(ch)
-		if err != nil {
-			return nil, err
-		}
-		return dec.Reader(part), nil
+	dec, err := decodeCharsetFromParams(params)
+	if err != nil {
+		return nil, err
 	}
-	return part, nil
+	return dec.Reader(part), nil
 }
 
 func parseMultipartAlternative(msg io.Reader, boundary string) (textBody, htmlBody string, embeddedFiles []EmbeddedFile, err error) {
@@ -275,14 +271,11 @@ func parseMultipartMixed(msg io.Reader, boundary string) (textBody, htmlBody str
 			if err != nil {
 				return textBody, htmlBody, attachments, embeddedFiles, err
 			}
-			ch := charsetFromParams(params)
-			if ch != Utf8 && ch != UsAscii {
-				dec, err := charsetDecoder(ch)
-				if err != nil {
-					return textBody, htmlBody, attachments, embeddedFiles, err
-				}
-				ppContent, _ = dec.Bytes(ppContent)
+			dec, err := decodeCharsetFromParams(params)
+			if err != nil {
+				return textBody, htmlBody, attachments, embeddedFiles, err
 			}
+			ppContent, _ = dec.Bytes(ppContent)
 
 			textBody += strings.TrimSuffix(string(ppContent[:]), "\n")
 		} else if contentType == contentTypeTextHtml {
@@ -290,14 +283,11 @@ func parseMultipartMixed(msg io.Reader, boundary string) (textBody, htmlBody str
 			if err != nil {
 				return textBody, htmlBody, attachments, embeddedFiles, err
 			}
-			ch := charsetFromParams(params)
-			if ch != Utf8 && ch != UsAscii {
-				dec, err := charsetDecoder(ch)
-				if err != nil {
-					return textBody, htmlBody, attachments, embeddedFiles, err
-				}
-				ppContent, _ = dec.Bytes(ppContent)
+			dec, err := decodeCharsetFromParams(params)
+			if err != nil {
+				return textBody, htmlBody, attachments, embeddedFiles, err
 			}
+			ppContent, _ = dec.Bytes(ppContent)
 
 			htmlBody += strings.TrimSuffix(string(ppContent[:]), "\n")
 		} else {

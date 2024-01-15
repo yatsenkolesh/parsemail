@@ -1,9 +1,9 @@
 package parsemail
 
 import (
-	"errors"
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/charmap"
+	"io"
 	"strings"
 )
 
@@ -11,8 +11,12 @@ type (
 	Charset string
 )
 
-var (
-	ErrUnsupported = errors.New("unsupported charset provided")
+type (
+	CharsetDecoder interface {
+		Bytes(b []byte) ([]byte, error)
+		Reader(r io.Reader) io.Reader
+	}
+	DefaultDecoder struct{}
 )
 
 const (
@@ -32,11 +36,54 @@ const (
 	Iso885916   Charset = "iso-8859-16"
 	Utf8        Charset = "utf-8"
 	UsAscii     Charset = "us-ascii"
+	Windows1250 Charset = "windows-1250"
+	Windows1251 Charset = "windows-1251"
 	Windows1252 Charset = "windows-1252"
+	Windows1253 Charset = "windows-1253"
+	Windows1254 Charset = "windows-1254"
+	Windows1255 Charset = "windows-1255"
+	Windows1256 Charset = "windows-1256"
+	Windows1257 Charset = "windows-1257"
+	Windows1258 Charset = "windows-1258"
+)
+
+var (
+	decoders = map[Charset]func() *encoding.Decoder{
+		Iso88591:    charmap.ISO8859_1.NewDecoder,
+		Iso88592:    charmap.ISO8859_2.NewDecoder,
+		Iso88593:    charmap.ISO8859_3.NewDecoder,
+		Iso88594:    charmap.ISO8859_4.NewDecoder,
+		Iso88595:    charmap.ISO8859_5.NewDecoder,
+		Iso88596:    charmap.ISO8859_6.NewDecoder,
+		Iso88597:    charmap.ISO8859_7.NewDecoder,
+		Iso88598:    charmap.ISO8859_8.NewDecoder,
+		Iso88599:    charmap.ISO8859_9.NewDecoder,
+		Iso885910:   charmap.ISO8859_10.NewDecoder,
+		Iso885913:   charmap.ISO8859_13.NewDecoder,
+		Iso885914:   charmap.ISO8859_14.NewDecoder,
+		Iso885915:   charmap.ISO8859_15.NewDecoder,
+		Iso885916:   charmap.ISO8859_16.NewDecoder,
+		Windows1250: charmap.Windows1250.NewDecoder,
+		Windows1251: charmap.Windows1251.NewDecoder,
+		Windows1252: charmap.Windows1252.NewDecoder,
+		Windows1253: charmap.Windows1253.NewDecoder,
+		Windows1254: charmap.Windows1254.NewDecoder,
+		Windows1255: charmap.Windows1255.NewDecoder,
+		Windows1256: charmap.Windows1256.NewDecoder,
+		Windows1257: charmap.Windows1257.NewDecoder,
+		Windows1258: charmap.Windows1258.NewDecoder,
+	}
 )
 
 func (c Charset) String() string {
 	return string(c)
+}
+
+func (d DefaultDecoder) Bytes(b []byte) ([]byte, error) {
+	return b, nil
+}
+func (d DefaultDecoder) Reader(r io.Reader) io.Reader {
+	return r
 }
 
 func charsetFromParams(params map[string]string) Charset {
@@ -50,39 +97,14 @@ func charsetFromParams(params map[string]string) Charset {
 	return Charset(strings.ToLower(charset))
 }
 
-func charsetDecoder(c Charset) (*encoding.Decoder, error) {
-	switch c {
-	case Iso88591:
-		return charmap.ISO8859_1.NewDecoder(), nil
-	case Iso88592:
-		return charmap.ISO8859_2.NewDecoder(), nil
-	case Iso88593:
-		return charmap.ISO8859_3.NewDecoder(), nil
-	case Iso88594:
-		return charmap.ISO8859_4.NewDecoder(), nil
-	case Iso88595:
-		return charmap.ISO8859_5.NewDecoder(), nil
-	case Iso88596:
-		return charmap.ISO8859_6.NewDecoder(), nil
-	case Iso88597:
-		return charmap.ISO8859_7.NewDecoder(), nil
-	case Iso88598:
-		return charmap.ISO8859_8.NewDecoder(), nil
-	case Iso88599:
-		return charmap.ISO8859_9.NewDecoder(), nil
-	case Iso885910:
-		return charmap.ISO8859_10.NewDecoder(), nil
-	case Iso885913:
-		return charmap.ISO8859_13.NewDecoder(), nil
-	case Iso885914:
-		return charmap.ISO8859_14.NewDecoder(), nil
-	case Iso885915:
-		return charmap.ISO8859_15.NewDecoder(), nil
-	case Iso885916:
-		return charmap.ISO8859_16.NewDecoder(), nil
-	case Windows1252:
-		return charmap.Windows1252.NewDecoder(), nil
-	default:
-		return nil, ErrUnsupported
+func charsetDecoder(c Charset) (CharsetDecoder, error) {
+	if dec, ok := decoders[c]; ok {
+		return dec(), nil
 	}
+	return DefaultDecoder{}, nil
+}
+
+func decodeCharsetFromParams(params map[string]string) (CharsetDecoder, error) {
+	ch := charsetFromParams(params)
+	return charsetDecoder(ch)
 }
