@@ -1,4 +1,4 @@
-module github.com/EVANA-AG/parsemail
+module github.com/yatsenkolesh/parsemail
 
 go 1.20
 
