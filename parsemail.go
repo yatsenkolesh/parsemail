@@ -52,6 +52,13 @@ func Parse(r io.Reader) (email Email, err error) {
 		msg.Body, _ = decodeContent(msg.Body, msg.Header.Get("Content-Transfer-Encoding"))
 		message, _ := io.ReadAll(msg.Body)
 		email.HTMLBody = strings.TrimSuffix(string(message[:]), "\n")
+	case "application/zip":
+		email.TextBody, email.HTMLBody, email.Attachments, email.EmbeddedFiles, err = parseMultipartMixed(msg.Body, params["boundary"])
+		email.Attachments = append(email.Attachments, Attachment{
+			Filename:    "attachment.zip",
+			ContentType: "application/zip",
+			Data:        msg.Body,
+		})
 	default:
 		email.Content, err = decodeContent(msg.Body, msg.Header.Get("Content-Transfer-Encoding"))
 	}
