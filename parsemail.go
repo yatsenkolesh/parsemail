@@ -3,6 +3,7 @@ package parsemail
 import (
 	"bytes"
 	"encoding/base64"
+	b64 "encoding/base64"
 	"fmt"
 	"io"
 	"mime"
@@ -54,10 +55,19 @@ func Parse(r io.Reader) (email Email, err error) {
 		email.HTMLBody = strings.TrimSuffix(string(message[:]), "\n")
 	case "application/zip":
 		email.TextBody, email.HTMLBody, email.Attachments, email.EmbeddedFiles, err = parseMultipartMixed(msg.Body, params["boundary"])
+
+		var content io.Reader
+		if msg.Header.Get("Content-Transfer-Encoding") == "base64" {
+			ioread, _ := io.ReadAll(msg.Body)
+			base645, _ := b64.StdEncoding.DecodeString(string(ioread))
+			content = strings.NewReader(string(base645))
+		} else {
+			content = msg.Body
+		}
 		email.Attachments = append(email.Attachments, Attachment{
 			Filename:    "attachment.zip",
 			ContentType: "application/zip",
-			Data:        msg.Body,
+			Data:        content,
 		})
 	default:
 		email.Content, err = decodeContent(msg.Body, msg.Header.Get("Content-Transfer-Encoding"))
