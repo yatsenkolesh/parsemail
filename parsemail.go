@@ -6,6 +6,7 @@ import (
 	b64 "encoding/base64"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"mime"
 	"mime/multipart"
 	"mime/quotedprintable"
@@ -404,6 +405,17 @@ func decodeContent(content io.Reader, encoding string) (io.Reader, error) {
 			return nil, err
 		}
 		return bytes.NewReader(dd), nil
+	// The values "8bit", "7bit", and "binary" all imply that NO encoding has been performed and data need to be read as bytes.
+	// "7bit" means that the data is all represented as short lines of US-ASCII data.
+	// "8bit" means that the lines are short, but there may be non-ASCII characters (octets with the high-order bit set).
+	// "Binary" means that not only may non-ASCII characters be present, but also that the lines are not necessarily short enough for SMTP transport.
+	case "8bit", "binary":
+		decoded := quotedprintable.NewReader(content)
+		b, err := ioutil.ReadAll(decoded)
+		if err != nil {
+			return nil, err
+		}
+		return bytes.NewReader(b), nil
 	case "quoted-printable":
 		decoded := quotedprintable.NewReader(content)
 		b, err := io.ReadAll(decoded)
