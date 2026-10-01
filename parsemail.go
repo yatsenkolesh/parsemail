@@ -41,8 +41,7 @@ func Parse(r io.Reader) (email Email, err error) {
 	}
 
 	switch contentType {
-	case contentTypeMultipartMixed:
-	case contentTypeMultipartReport:
+	case contentTypeMultipartMixed, contentTypeMultipartReport:
 		email.TextBody, email.HTMLBody, email.Attachments, email.EmbeddedFiles, err = parseMultipartMixed(msg.Body, params["boundary"])
 	case contentTypeMultipartAlternative:
 		email.TextBody, email.HTMLBody, email.EmbeddedFiles, err = parseMultipartAlternative(msg.Body, params["boundary"])
@@ -311,7 +310,9 @@ func parseMultipartMixed(msg io.Reader, boundary string) (textBody, htmlBody str
 
 			htmlBody += strings.TrimSuffix(string(ppContent[:]), "\n")
 		} else {
-			return textBody, htmlBody, attachments, embeddedFiles, fmt.Errorf("Unknown multipart/mixed nested mime type: %s", contentType)
+			// Skip unknown MIME types (e.g., message/delivery-status, text/rfc822-headers)
+			// These are typically informational parts of delivery reports
+			continue
 		}
 	}
 
