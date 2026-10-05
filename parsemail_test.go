@@ -3,12 +3,32 @@ package parsemail
 import (
 	"encoding/base64"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/mail"
 	"strings"
 	"testing"
 	"time"
 )
+
+func TestDecodeContentBase64WithFoldedWhitespace(t *testing.T) {
+	encoded := strings.Repeat("QUFB", 78) + "QU\n FB\tQUFB"
+
+	decoded, err := decodeContent(strings.NewReader(encoded), "base64")
+	if err != nil {
+		t.Fatalf("decode folded Base64: %v", err)
+	}
+
+	got, err := io.ReadAll(decoded)
+	if err != nil {
+		t.Fatalf("read decoded content: %v", err)
+	}
+
+	want := strings.Repeat("AAA", 80)
+	if string(got) != want {
+		t.Fatalf("decoded content mismatch: got %d bytes, want %d", len(got), len(want))
+	}
+}
 
 func TestParseEmail(t *testing.T) {
 	var testData = map[int]struct {

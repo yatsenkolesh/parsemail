@@ -395,8 +395,16 @@ func decodeAttachment(part *multipart.Part) (at Attachment, err error) {
 func decodeContent(content io.Reader, encoding string) (io.Reader, error) {
 	switch strings.ToLower(encoding) {
 	case "base64":
-		decoded := base64.NewDecoder(base64.StdEncoding, content)
-		b, err := io.ReadAll(decoded)
+		encoded, err := io.ReadAll(content)
+		if err != nil {
+			return nil, err
+		}
+
+		// MIME Base64 is commonly folded using spaces or tabs in addition to
+		// CRLF. encoding/base64 only ignores CR and LF, so remove the remaining
+		// transport whitespace before decoding.
+		encoded = stripBase64Whitespace(encoded)
+		b, err := base64.StdEncoding.DecodeString(string(encoded))
 		if err != nil {
 			return nil, err
 		}
@@ -432,6 +440,20 @@ func decodeContent(content io.Reader, encoding string) (io.Reader, error) {
 	default:
 		return nil, fmt.Errorf("unknown encoding: %s", encoding)
 	}
+}
+
+func stripBase64Whitespace(encoded []byte) []byte {
+	cleaned := encoded[:0]
+	for _, b := range encoded {
+		switch b {
+		case ' ', '\t', '\r', '\n', '\v', '\f':
+			continue
+		default:
+			cleaned = append(cleaned, b)
+		}
+	}
+
+	return cleaned
 }
 
 type headerParser struct {
